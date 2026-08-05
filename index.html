@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="vs-dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#1e1e1e" />
+  <title>MC Script Editor</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <!-- Splash / Loading Screen -->
+  <div id="loading-screen">
+    <div class="loading-content">
+      <div class="loading-logo">&#60;/&#62;</div>
+      <div class="loading-title">MC Script Editor</div>
+      <div class="loading-subtitle">Preparando ambiente...</div>
+      <div class="loading-bar-container">
+        <div class="loading-bar" id="loading-bar"></div>
+      </div>
+      <div class="loading-status" id="loading-status">Inicializando...</div>
+    </div>
+  </div>
+
+  <!-- App Container -->
+  <div id="app" class="hidden">
+    <!-- Barra Superior -->
+    <header id="top-bar">
+      <button id="menu-toggle" class="icon-btn" aria-label="Menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <span id="project-title">Nenhum projeto</span>
+      <div id="top-actions">
+        <button id="action-save" class="icon-btn" aria-label="Salvar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+          </svg>
+        </button>
+        <button id="action-settings" class="icon-btn" aria-label="Configurações">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Área Principal -->
+    <div id="main-area">
+      <!-- Sidebar (Explorer) -->
+      <aside id="sidebar">
+        <div id="sidebar-header">
+          <span>EXPLORADOR</span>
+          <div id="sidebar-actions">
+            <button id="btn-new-file" class="icon-btn small" title="Novo Arquivo">&#128196;</button>
+            <button id="btn-new-folder" class="icon-btn small" title="Nova Pasta">&#128193;</button>
+            <button id="btn-refresh" class="icon-btn small" title="Atualizar">&#8635;</button>
+          </div>
+        </div>
+        <div id="explorer-tree"></div>
+      </aside>
+
+      <!-- Editor Area -->
+      <div id="editor-area">
+        <!-- Tabs -->
+        <div id="tabs-bar">
+          <div id="tabs-container"></div>
+        </div>
+        <!-- Monaco Container -->
+        <div id="monaco-container"></div>
+        <!-- Status Bar -->
+        <div id="status-bar">
+          <span id="status-cursor">Ln 1, Col 1</span>
+          <span id="status-language">JavaScript</span>
+          <span id="status-encoding">UTF-8</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="context-menu" class="hidden">
+    <div class="context-item" data-action="rename">Renomear</div>
+    <div class="context-item" data-action="delete">Excluir</div>
+    <div class="context-item" data-action="copy">Copiar</div>
+    <div class="context-item" data-action="cut">Recortar</div>
+    <div class="context-item" data-action="paste">Colar</div>
+    <div class="context-separator"></div>
+    <div class="context-item" data-action="new-file">Novo Arquivo</div>
+    <div class="context-item" data-action="new-folder">Nova Pasta</div>
+  </div>
+
+  <!-- Modal Genérico -->
+  <div id="modal-overlay" class="hidden">
+    <div id="modal-content">
+      <div id="modal-header">
+        <span id="modal-title">Título</span>
+        <button id="modal-close" class="icon-btn">&times;</button>
+      </div>
+      <div id="modal-body"></div>
+      <div id="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
