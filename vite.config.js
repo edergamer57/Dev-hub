@@ -4,14 +4,7 @@ export default defineConfig({
   root: 'src',
   build: {
     outDir: '../dist',
-    emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          monaco: ['monaco-editor']
-        }
-      }
-    }
+    emptyOutDir: true
   },
   optimizeDeps: {
     include: ['monaco-editor']

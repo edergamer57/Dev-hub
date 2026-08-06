@@ -1,0 +1,2074 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- Primary Meta Tags -->
+  <title>Script Api Editor</title>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta property="og:title" content="Script Api Editor" />
+  <meta property="og:description"
+    content="A simple web-based code editor for Minecraft Bedrock Edition scripting with real-time autocomplete." />
+
+  <meta property="og:image"
+    content="https://minato-mba.github.io/web-apps/content/pictures/web-editor/screenshot.png" />
+  <meta property="og:image:width" content="1350" />
+  <meta property="og:image:height" content="643" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta property="twitter:image"
+    content="https://minato-mba.github.io/web-apps/content/pictures/web-editor/screenshot.png" />
+
+  <meta name="theme-color" content="#1e1e1e" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#f3f3f3" media="(prefers-color-scheme: light)" />
+  <meta name="apple-mobile-web-app-title" content="Script Api Editor" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="msapplication-TileColor" content="#1e1e1e" />
+
+  <link rel="icon" type="image/x-icon" href="content/pictures/web-editor/web-editor.png" />
+  <style>
+    :root {
+      /* dark theme (default) */
+      --bg-color: #1e1e1e;
+      --text-color: #d4d4d4;
+      --button-bg: #3c3c3c;
+      --button-border: #454545;
+      --modal-bg: #2d2d2d;
+      --input-bg: #3c3c3c;
+      --hover-brightness: 1.15;
+      --scrollbar-color: #3c3c3c;
+      --scrollbar-thumb: #606060;
+    }
+
+    [data-theme="hc-black"] {
+      /* high contrast theme */
+      --bg-color: #000000;
+      --text-color: #ffffff;
+      --button-bg: #000000;
+      --button-border: #ffffff;
+      --modal-bg: #000000;
+      --input-bg: #000000;
+      --hover-brightness: 1.25;
+      --scrollbar-color: #000000;
+      --scrollbar-thumb: #ffffff;
+    }
+
+    [data-theme="vs"] {
+      /* light theme */
+      --bg-color: #f3f3f3;
+      --text-color: #333333;
+      --button-bg: #e0e0e0;
+      --button-border: #cccccc;
+      --modal-bg: #ffffff;
+      --input-bg: #ffffff;
+      --hover-brightness: 0.95;
+      --scrollbar-color: #e0e0e0;
+      --scrollbar-thumb: #b0b0b0;
+    }
+
+    [data-theme="dracula"] {
+      /* dark-blue theme */
+      --bg-color: #282a36;
+      --text-color: #f8f8f2;
+      --button-bg: #44475a;
+      --button-border: #6272a4;
+      --modal-bg: #44475a;
+      --input-bg: #44475a;
+      --hover-brightness: 1.15;
+      --scrollbar-color: #44475a;
+      --scrollbar-thumb: #6272a4;
+    }
+
+    [data-theme="monokai"] {
+      /* monokai (dark-green) theme */
+      --bg-color: #272822;
+      --text-color: #f8f8f2;
+      --button-bg: #3e3d32;
+      --button-border: #75715e;
+      --modal-bg: #3e3d32;
+      --input-bg: #3e3d32;
+      --hover-brightness: 1.15;
+      --scrollbar-color: #3e3d32;
+      --scrollbar-thumb: #75715e;
+    }
+
+    [data-theme="solarized-dark"] {
+      --bg-color: #002b36;
+      --text-color: #839496;
+      --button-bg: #073642;
+      --button-border: #586e75;
+      --modal-bg: #073642;
+      --input-bg: #073642;
+      --hover-brightness: 1.15;
+      --scrollbar-color: #073642;
+      --scrollbar-thumb: #586e75;
+    }
+
+    [data-theme="solarized-light"] {
+      --bg-color: #fdf6e3;
+      --text-color: #657b83;
+      --button-bg: #eee8d5;
+      --button-border: #93a1a1;
+      --modal-bg: #eee8d5;
+      --input-bg: #eee8d5;
+      --hover-brightness: 0.95;
+      --scrollbar-color: #eee8d5;
+      --scrollbar-thumb: #93a1a1;
+    }
+
+    [data-theme="nord"] {
+      --bg-color: #2e3440;
+      --text-color: #d8dee9;
+      --button-bg: #3b4252;
+      --button-border: #4c566a;
+      --modal-bg: #3b4252;
+      --input-bg: #3b4252;
+      --hover-brightness: 1.15;
+      --scrollbar-color: #3b4252;
+      --scrollbar-thumb: #4c566a;
+    }
+
+    [data-theme="gruvbox"] {
+      --bg-color: #282828;
+      --text-color: #ebdbb2;
+      --button-bg: #3c3836;
+      --button-border: #665c54;
+      --modal-bg: #3c3836;
+      --input-bg: #3c3836;
+      --hover-brightness: 1.15;
+      --scrollbar-color: #3c3836;
+      --scrollbar-thumb: #665c54;
+    }
+
+    body {
+      margin: 0;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .loading-bar {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background-color: var(--button-border);
+      z-index: 1001;
+    }
+
+    .loading-progress {
+      height: 100%;
+      width: 0;
+      background-color: limegreen;
+      transition: width 0.3s ease;
+    }
+
+    #toolbar-container {
+      position: relative;
+      margin-bottom: 10px;
+    }
+
+    #toolbar-toggle {
+      top: -10px;
+      padding: 4px 8px;
+      background: var(--button-bg);
+      border: 1px solid var(--button-border);
+      color: var(--text-color);
+      cursor: pointer;
+      border-radius: 4px 4px 0 0;
+      font-size: 12px;
+      z-index: 2;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    #toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      transition: all 0.3s ease;
+      overflow: hidden;
+      height: 0;
+      opacity: 0;
+    }
+
+    #toolbar.visible {
+      height: auto;
+      opacity: 1;
+      padding: 8px 0;
+    }
+
+    .toolbar-btn {
+      padding: 12px 16px;
+      background: var(--button-bg);
+      border: 1px solid var(--button-border);
+      color: var(--text-color);
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+      white-space: nowrap;
+      font-size: 14px;
+      flex: 1 1 auto;
+    }
+
+    .toolbar-btn:hover {
+      filter: brightness(var(--hover-brightness));
+    }
+
+    .toolbar-input {
+      padding: 12px;
+      background: var(--input-bg);
+      border: 1px solid var(--button-border);
+      color: var(--text-color);
+      border-radius: 4px;
+      font-family: Arial, sans-serif;
+      flex: 2 1 200px;
+      min-width: 120px;
+      font-size: 14px;
+    }
+
+    #editor {
+      width: 100%;
+      height: calc(100vh - 70px);
+      border: 1px solid var(--button-border);
+      border-radius: 4px;
+      touch-action: manipulation;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      position: relative;
+      background: var(--modal-bg);
+      margin: auto;
+      padding: 20px;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 1px solid var(--button-border);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .modal-close {
+      cursor: pointer;
+      font-size: 24px;
+      padding: 0 8px;
+      color: var(--text-color);
+    }
+
+    .modal-close:hover {
+      opacity: 0.8;
+    }
+
+    .settings-group {
+      margin-bottom: 15px;
+    }
+
+    .settings-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-color);
+    }
+
+    .version-select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      background: var(--input-bg);
+      border: 1px solid var(--button-border);
+      color: var(--text-color);
+      border-radius: 4px;
+    }
+
+    .module-label {
+      margin: 8px 0 4px;
+      font-size: 0.9em;
+      color: var(--text-color);
+      opacity: 0.8;
+    }
+
+    @media (max-width: 480px) {
+      .toolbar-btn {
+        padding: 14px 12px;
+        font-size: 13px;
+      }
+
+      .toolbar-input {
+        flex-basis: 100%;
+      }
+
+      #editor {
+        height: calc(100vh - 90px);
+      }
+    }
+
+    /* monaco editor overrides */
+    .monaco-editor .line-numbers {
+      font-size: 12px !important;
+      padding-left: 5px !important;
+      color: var(--text-color) !important;
+    }
+
+    .monaco-editor .margin-view-overlays {
+      width: 40px !important;
+      background: var(--bg-color) !important;
+    }
+
+    /* scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      background-color: var(--scrollbar-color);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: var(--scrollbar-thumb);
+      border-radius: 4px;
+    }
+
+    #error-container,
+    #notification-container {
+      position: fixed;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 10000;
+    }
+
+    .error-toast,
+    .notification {
+      background: #ff4444;
+      color: white;
+      width: 40%;
+      padding: 12px;
+      margin: 10px;
+      border-radius: 4px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(-20px);
+      animation: fadeInOut 4s ease-in-out;
+    }
+
+    .notification {
+      background: #44ff5d;
+    }
+
+    @keyframes fadeInOut {
+      0% {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      10% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      90% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+    }
+
+    .selections {
+      position: absolute;
+      z-index: 10;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+
+    .mnc {
+      padding: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .hovered {
+      background-color: #ccc;
+    }
+
+    #tabsBar {
+      display: flex;
+      overflow-x: auto;
+      gap: 4px;
+      margin-bottom: 6px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+
+    #tabsBar:empty {
+      display: none;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--button-bg);
+      border: 1px solid var(--button-border);
+      border-bottom: 2px solid transparent;
+      border-radius: 4px 4px 0 0;
+      color: var(--text-color);
+      font-size: 13px;
+      white-space: nowrap;
+      cursor: pointer;
+      opacity: 0.7;
+      flex: 0 0 auto;
+    }
+
+    .tab.active {
+      opacity: 1;
+      border-bottom: 2px solid limegreen;
+    }
+
+    .tab-close {
+      opacity: 0.6;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+
+    .tab-close:hover {
+      opacity: 1;
+      color: #ff4444;
+    }
+
+    #fileManagerList {
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .file-manager-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--button-border);
+      color: var(--text-color);
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .file-manager-item:hover {
+      background: var(--button-bg);
+    }
+
+    .file-manager-item.active {
+      background: var(--button-bg);
+      border-left: 3px solid limegreen;
+    }
+
+    .file-manager-name {
+      flex: 1;
+      overflow-wrap: anywhere;
+    }
+
+    .file-manager-remove {
+      opacity: 0.6;
+      padding: 4px 6px;
+    }
+
+    .file-manager-remove:hover {
+      opacity: 1;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- loading bar -->
+  <div id="loadingBar" class="loading-bar">
+    <div class="loading-progress"></div>
+  </div>
+  <!-- error container -->
+  <div id="error-container"></div>
+  <div id="notification-container"></div>
+  <div id="toolbar-container">
+    <div id="toolbar-toggle" onclick="toggleToolbar()">▽ Show Toolbar</div>
+    <div id="toolbar">
+      <input type="text" class="toolbar-input" id="filename" value="main.js" />
+      <button class="toolbar-btn" onclick="triggerOpenFile()">📂 Open</button>
+      <button class="toolbar-btn" onclick="triggerOpenFolder()">📁 Open Folder</button>
+      <button class="toolbar-btn" onclick="showFileManager()">🗂️ Files</button>
+      <button class="toolbar-btn" onclick="createNewFile()">📄 New</button>
+      <input type="file" id="fileInput" multiple accept=".js,.ts,.mjs,.cjs,.json,.txt" style="display:none" onchange="handleFileOpen(event)" />
+      <input type="file" id="folderInput" webkitdirectory multiple style="display:none" onchange="handleFolderOpen(event)" />
+      <button class="toolbar-btn" onclick="saveCode()">💾 Save</button>
+      <button class="toolbar-btn" onclick="formatCode()">✨ Format</button>
+      <button class="toolbar-btn" onclick="copy()">Copy</button>
+      <button class="toolbar-btn" onclick="copyWithCodeBlock()">Copy &lt;&gt;</button>
+      <button class="toolbar-btn" onclick="showSettings()">⚙️ Settings</button>
+      <button class="toolbar-btn" onclick="showVersions()">📦 Modules</button>
+      <button class="toolbar-btn" id="compileBtn" onclick="compileTypeScript()">🔄 Compile TS</button>
+    </div>
+  </div>
+  <div id="tabsBar"></div>
+  <div id="editor"></div>
+
+  <!-- settings menu -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Editor Settings</h3>
+        <span class="modal-close" onclick="closeModal('settingsModal')">&times;</span>
+      </div>
+      <div class="settings-group">
+        <label><input type="checkbox" id="minimap" /> Show Minimap</label>
+        <label><input type="checkbox" id="wordWrap" checked />Wrap Lines</label>
+        <label>Font Size <input type="number" id="fontSize" value="13" min="8" max="24" class="toolbar-input" /></label>
+        <label><input type="checkbox" id="lineNumbers" checked /> Show Line Numbers</label>
+        <label><input type="checkbox" id="renderWhitespace" /> Render Whitespace</label>
+        <label>Theme
+          <select id="theme" class="toolbar-input">
+            <option value="vs-dark" selected>Dark</option>
+            <option value="vs">Light</option>
+            <option value="hc-black">High Contrast</option>
+            <option value="dracula">Dracula</option>
+            <option value="monokai">Monokai</option>
+            <option value="solarized-dark">Solarized Dark</option>
+            <option value="solarized-light">Solarized Light</option>
+            <option value="nord">Nord</option>
+            <option value="gruvbox">Gruvbox</option>
+          </select></label>
+        <label><input type="checkbox" id="autoClosingBrackets" checked /> Auto Closing Brackets</label>
+        <label>Auto-Save Interval (seconds)
+          <input type="number" id="autoSaveInterval" min="5" value="30" class="toolbar-input" checked />
+        </label>
+        <label><input type="checkbox" id="autoSaveEnabled" onchange="toggleInput()" /> Enable Auto-Save</label>
+        <label>Language
+          <select id="language" class="toolbar-input">
+            <option value="javascript">JavaScript</option>
+            <option value="typescript">TypeScript</option>
+          </select></label>
+      </div>
+      <button class="toolbar-btn" onclick="applySettings()">Apply</button>
+    </div>
+  </div>
+
+  <!-- version selection menu -->
+  <div id="versionModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Module Versions</h3>
+        <span class="modal-close" onclick="closeModal('versionModal')">&times;</span>
+      </div>
+      <div class="settings-group" id="versionSelectors">
+        <!-- modules versions will be added here dynamically -->
+      </div>
+      <button class="toolbar-btn" onclick="loadSelectedVersions()">Load Versions</button>
+    </div>
+  </div>
+
+  <!-- files manager -->
+  <div id="filesModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Files</h3>
+        <span class="modal-close" onclick="closeModal('filesModal')">&times;</span>
+      </div>
+      <button class="toolbar-btn" onclick="triggerReloadFolder()" style="margin-bottom: 10px; width: 100%;">🔄 Reload Folder from Disk</button>
+      <div id="fileManagerList"><!-- files listed here dynamically --></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/typescript/5.3.3/typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/eruda/3.4.1/eruda.min.js"
+    integrity="sha512-3RVqOZtMevFOLeXCp0/Wl7np/l3J3MMysaFDUhNh+hdKx+Wb0lMXuHwA6CZ/+4DfYZM01Om1as8g+mnTaQH9vA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    function toggleInput() {
+      document.getElementById("autoSaveInterval").disabled = !document.getElementById("autoSaveEnabled").checked;
+    }
+
+    let errorCount = 0;
+    function showError(message) {
+      errorCount += 1;
+      const errorContainer = document.getElementById("error-container");
+      const toast = document.createElement("div");
+      toast.className = "error-toast";
+      toast.textContent = message;
+
+      setTimeout(() => {
+        errorContainer.appendChild(toast);
+        setTimeout(() => {
+          toast.remove();
+          errorCount -= 1;
+        }, 2500);
+      }, errorCount * 20);
+    }
+
+    let notificationCount = 0;
+    function showNotification(message) {
+      notificationCount += 1;
+      const notificationContainer = document.getElementById("notification-container");
+      const toast = document.createElement("div");
+      toast.className = "notification";
+      toast.textContent = message;
+
+      setTimeout(() => {
+        notificationContainer.appendChild(toast);
+        setTimeout(() => {
+          toast.remove();
+          notificationCount -= 1;
+        }, 4000);
+      }, notificationCount * 500);
+    }
+    // ========== modules ========== //
+    // add new modules here following the same format
+    const MODULES = [
+      {
+        name: "@minecraft/server",
+        selectorId: "minecraft-server",
+        currentVersion: "1.17.0-beta.1.21.51-stable",
+        typesUrl: (version) => `https://cdn.jsdelivr.net/npm/@minecraft/server@${version}/index.d.ts`,
+      },
+      {
+        name: "@minecraft/server-ui",
+        selectorId: "minecraft-server-ui",
+        currentVersion: "1.3.0",
+        typesUrl: (version) => `https://cdn.jsdelivr.net/npm/@minecraft/server-ui@${version}/index.d.ts`,
+      },
+      {
+        name: "@minecraft/server-net",
+        selectorId: "minecraft-server-net",
+        currentVersion: "1.0.0-beta.1.21.51-stable",
+        typesUrl: (version) => `https://cdn.jsdelivr.net/npm/@minecraft/server-net@${version}/index.d.ts`,
+      },
+      {
+        name: "@minecraft/server-admin",
+        selectorId: "minecraft-server-admin",
+        currentVersion: "1.0.0-beta.1.21.51-stable",
+        typesUrl: (version) => `https://cdn.jsdelivr.net/npm/@minecraft/server-admin@${version}/index.d.ts`,
+      },
+      {
+        name: "@minecraft/math",
+        selectorId: "minecraft-math",
+        currentVersion: "2.0.1",
+        typesUrl: (version) => `https://cdn.jsdelivr.net/npm/@minecraft/math@${version}/dist/minecraft-math.d.ts`,
+      },
+      {
+        name: "@minecraft/vanilla-data",
+        selectorId: "minecraft-vanilla-data",
+        currentVersion: "1.21.50",
+        typesUrl: (version) => `https://cdn.jsdelivr.net/npm/@minecraft/vanilla-data@${version}/lib/index.d.ts`,
+      },
+      {
+        name: "@minecraft/debug-utilities",
+        selectorId: "minecraft-debug-utilities",
+        currentVersion: "1.0.0-beta.1.21.70-stable",
+        typesUrl: (version) => `https://cdn.jsdelivr.net/npm/@minecraft/debug-utilities@${version}/index.d.ts`,
+      },
+    ];
+
+    const defaultCode = `// Minecraft scripting with full autocomplete capabilities\nimport { world, ItemStack } from '@minecraft/server';\nimport { ActionFormData } from '@minecraft/server-ui';\n\nworld.beforeEvents.itemUse.subscribe((event) => {\n    const { source, itemStack } = event;\n    if (itemStack.typeId !== "minecraft:stick") return;\n    new ActionFormData()\n        .title("Special Offer!")\n        .body("Do you want a free diamond?")\n        .button("Yes!")\n        .button("No")\n        .show(source)\n        .then(({ selection }) => {\n            if (selection !== 0) return;\n            source.getComponent("minecraft:inventory")?.container?.addItem(new ItemStack("minecraft:diamond", 1));\n            source.sendMessage("You received a free diamond!");\n        })\n});`;
+    let editor;
+    let typeLibs = new Map();
+    let isToolbarVisible = false;
+
+    /*------native filesystem adapter (Capacitor / Android only)------ */
+    // On the web build this whole module is inert (available() is false and
+    // every caller falls back to the old <input type=file> flow). Inside the
+    // Capacitor APK, it uses the OS document-tree picker (SAF) to get a
+    // *persistent* handle to a real folder on disk (e.g. your behavior pack
+    // folder), so Open Folder / Save / Reload Folder read and write the
+    // actual files instead of an in-memory copy.
+    const NativeFS = (() => {
+      function available() {
+        return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+      }
+      function FilePickerPlugin() {
+        return window.Capacitor?.Plugins?.FilePicker;
+      }
+      function FilesystemPlugin() {
+        return window.Capacitor?.Plugins?.Filesystem;
+      }
+      function PreferencesPlugin() {
+        return window.Capacitor?.Plugins?.Preferences;
+      }
+
+      let rootUri = null; // content:// tree uri of the picked project folder
+      const nativeUriByFile = new Map(); // relative name -> content:// document uri
+
+      async function pickFolder() {
+        const result = await FilePickerPlugin().pickDirectory();
+        rootUri = result.path;
+        try {
+          await PreferencesPlugin().set({ key: "vh_root_uri", value: rootUri });
+        } catch (e) {
+          /* Preferences plugin not installed/synced yet - not fatal */
+        }
+        return rootUri;
+      }
+
+      async function restoreLastFolderUri() {
+        try {
+          const { value } = await PreferencesPlugin().get({ key: "vh_root_uri" });
+          if (value) rootUri = value;
+        } catch (e) {
+          /* nothing saved yet */
+        }
+        return rootUri;
+      }
+
+      async function listFolderRecursive(uri, relBase, out) {
+        const { files } = await FilesystemPlugin().readdir({ path: uri });
+        for (const entry of files) {
+          const rel = relBase ? `${relBase}/${entry.name}` : entry.name;
+          if (entry.type === "directory") {
+            if (SKIPPED_DIR_PATTERN.test(rel + "/")) continue;
+            await listFolderRecursive(entry.uri, rel, out);
+          } else if (SUPPORTED_FILE_EXT.test(entry.name)) {
+            const { data } = await FilesystemPlugin().readFile({ path: entry.uri, encoding: "utf8" });
+            out.push({ rel, uri: entry.uri, content: data });
+          }
+        }
+      }
+
+      // Reads every supported file under `uri` and returns
+      // [{ rel, uri, content }]. Also remembers each file's real content://
+      // uri so writeFile() can save straight back to disk later.
+      async function loadFolder(uri) {
+        const out = [];
+        await listFolderRecursive(uri, "", out);
+        out.forEach((f) => nativeUriByFile.set(f.rel, f.uri));
+        return out;
+      }
+
+      function registerUri(rel, uri) {
+        nativeUriByFile.set(rel, uri);
+      }
+
+      function hasNativeHandle(rel) {
+        return nativeUriByFile.has(rel);
+      }
+
+      async function writeFile(rel, content) {
+        const uri = nativeUriByFile.get(rel);
+        if (!uri) throw new Error(`No native file handle for "${rel}" (it wasn't opened from disk)`);
+        await FilesystemPlugin().writeFile({ path: uri, data: content, encoding: "utf8" });
+      }
+
+      // Small on-disk cache for the Bedrock API type definitions so they
+      // survive app restarts and work offline, instead of re-downloading
+      // from the CDN every time.
+      async function getCachedTypeDef(key) {
+        try {
+          const { data } = await FilesystemPlugin().readFile({ path: `typedefs/${key}.d.ts`, directory: "DATA", encoding: "utf8" });
+          return data;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function setCachedTypeDef(key, content) {
+        try {
+          await FilesystemPlugin()
+            .mkdir({ path: "typedefs", directory: "DATA", recursive: true })
+            .catch(() => {});
+          await FilesystemPlugin().writeFile({ path: `typedefs/${key}.d.ts`, directory: "DATA", data: content, encoding: "utf8" });
+        } catch (e) {
+          console.error("Failed to cache type def on disk", e);
+        }
+      }
+
+      return {
+        available,
+        pickFolder,
+        restoreLastFolderUri,
+        loadFolder,
+        registerUri,
+        hasNativeHandle,
+        writeFile,
+        getCachedTypeDef,
+        setCachedTypeDef,
+        get rootUri() {
+          return rootUri;
+        },
+      };
+    })();
+
+    // Cross-platform cache: real disk file inside the APK, localStorage on
+    // the plain web build (still persists across sessions in the browser).
+    const TypeDefCache = {
+      async get(key) {
+        if (NativeFS.available()) return NativeFS.getCachedTypeDef(key);
+        try {
+          return localStorage.getItem(`typedef:${key}`);
+        } catch (e) {
+          return null;
+        }
+      },
+      async set(key, content) {
+        if (NativeFS.available()) return NativeFS.setCachedTypeDef(key, content);
+        try {
+          localStorage.setItem(`typedef:${key}`, content);
+        } catch (e) {
+          /* storage full/unavailable - just skip caching */
+        }
+      },
+    };
+
+    /*------multi-file workspace related functions------ */
+    // projectFiles = every loaded/created file (the whole workspace) as a
+    // real Monaco model with a file:/// uri. Because they all live in the
+    // same language service, relative imports (e.g. `import { foo } from
+    // "./utils"`) get real autocomplete/IntelliSense across files
+    // automatically - no extra completion provider needed.
+    // openTabs = the subset of projectFiles currently shown as tabs. Closing
+    // a tab only hides it; the file (and its exports) stay in the project
+    // and can be reopened from the Files manager.
+    let projectFiles = new Map(); // name -> monaco.editor.ITextModel
+    let openTabs = [];
+    let activeFileName = null;
+
+    function fileUri(name) {
+      return monaco.Uri.parse(`file:///${name}`);
+    }
+
+    function languageForFile(name) {
+      if (/\.tsx?$/i.test(name)) return "typescript";
+      if (/\.json$/i.test(name)) return "json";
+      return "javascript";
+    }
+
+    // Some Android file/folder pickers hand back a raw, percent-encoded
+    // content-provider path instead of a clean relative path, e.g.
+    // "primary%3A'myproject%2Fscripts%2Fmain.js". Clean that up.
+    function sanitizeFileName(raw) {
+      let name = raw || "untitled.js";
+      try {
+        name = decodeURIComponent(name);
+      } catch (e) {
+        /* wasn't encoded, ignore */
+      }
+      name = name.replace(/^[a-zA-Z0-9_.-]*:/, ""); // strip "primary:" style SAF prefixes
+      name = name.replace(/^['"]+/, ""); // stray leading quote seen on some devices
+      name = name.replace(/\\/g, "/").replace(/^\/+/, "");
+      return name.trim() || "untitled.js";
+    }
+
+    function uniqueFileName(name) {
+      if (!projectFiles.has(name)) return name;
+      const dot = name.lastIndexOf(".");
+      const base = dot === -1 ? name : name.slice(0, dot);
+      const ext = dot === -1 ? "" : name.slice(dot);
+      let i = 1;
+      let candidate;
+      do {
+        candidate = `${base}(${i})${ext}`;
+        i++;
+      } while (projectFiles.has(candidate));
+      return candidate;
+    }
+
+    function addFile(rawName, content, { openTab = true, persist = true } = {}) {
+      const name = uniqueFileName(sanitizeFileName(rawName));
+      const model = monaco.editor.createModel(content, languageForFile(name), fileUri(name));
+      model.onDidChangeContent(() => persistFilesDebounced());
+      projectFiles.set(name, model);
+      if (openTab) openFileInTab(name);
+      renderFileManager();
+      if (persist) persistFiles();
+      return name;
+    }
+
+    // Opens a file that's already in the project as a tab (adds the tab if
+    // needed) and focuses it. This is what the Files manager calls.
+    function openFileInTab(name) {
+      if (!projectFiles.has(name)) return;
+      switchToFile(name);
+    }
+
+    function switchToFile(name) {
+      const model = projectFiles.get(name);
+      if (!model || !editor) return;
+      if (!openTabs.includes(name)) openTabs.push(name);
+      activeFileName = name;
+      editor.setModel(model);
+      document.getElementById("filename").value = name;
+      const lang = languageForFile(name);
+      const langSelect = document.getElementById("language");
+      if (langSelect && lang !== "json") langSelect.value = lang;
+      const compileBtn = document.getElementById("compileBtn");
+      if (compileBtn) compileBtn.style.display = lang === "typescript" ? "block" : "none";
+      renderTabs();
+      renderFileManager();
+      persistFiles();
+    }
+
+    // Closes a tab only - the file stays loaded in the project so
+    // cross-file autocomplete keeps working, and it can be reopened from
+    // the Files manager at any time.
+    function closeTab(name, event) {
+      event?.stopPropagation();
+      const idx = openTabs.indexOf(name);
+      if (idx === -1) return;
+      if (openTabs.length === 1) {
+        showError("You can't close the only open tab");
+        return;
+      }
+      openTabs.splice(idx, 1);
+      if (activeFileName === name) {
+        switchToFile(openTabs[idx] || openTabs[idx - 1] || openTabs[0]);
+      } else {
+        renderTabs();
+        renderFileManager();
+        persistFiles();
+      }
+    }
+
+    // Fully removes a file from the project (disposes its model). Only
+    // reachable from the Files manager, not from the tab bar.
+    function removeFromProject(name, event) {
+      event?.stopPropagation();
+      if (!projectFiles.has(name)) return;
+      if (projectFiles.size === 1) {
+        showError("You can't remove the only file in the project");
+        return;
+      }
+      if (!confirm(`Remove "${name}" from the project? This can't be undone.`)) return;
+      projectFiles.get(name).dispose();
+      projectFiles.delete(name);
+      const tabIdx = openTabs.indexOf(name);
+      if (tabIdx !== -1) openTabs.splice(tabIdx, 1);
+      if (activeFileName === name) {
+        switchToFile(openTabs[0] || projectFiles.keys().next().value);
+      } else {
+        renderTabs();
+      }
+      renderFileManager();
+      persistFiles();
+    }
+
+    function renderTabs() {
+      const bar = document.getElementById("tabsBar");
+      if (!bar) return;
+      bar.innerHTML = "";
+      openTabs.forEach((name) => {
+        if (!projectFiles.has(name)) return;
+        const tab = document.createElement("div");
+        tab.className = "tab" + (name === activeFileName ? " active" : "");
+        tab.title = name;
+        tab.onclick = () => switchToFile(name);
+
+        const label = document.createElement("span");
+        label.textContent = name.includes("/") ? name.slice(name.lastIndexOf("/") + 1) : name;
+        tab.appendChild(label);
+
+        const close = document.createElement("span");
+        close.className = "tab-close";
+        close.textContent = "×";
+        close.onclick = (e) => closeTab(name, e);
+        tab.appendChild(close);
+
+        bar.appendChild(tab);
+      });
+    }
+
+    /*------files manager (mini file browser) related functions------ */
+    function showFileManager() {
+      editor?.setSelection({ startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 });
+      document.activeElement?.blur();
+      renderFileManager();
+      document.getElementById("filesModal").style.display = "block";
+    }
+
+    function renderFileManager() {
+      const list = document.getElementById("fileManagerList");
+      if (!list) return;
+      list.innerHTML = "";
+      const sortedNames = Array.from(projectFiles.keys()).sort((a, b) => a.localeCompare(b));
+
+      sortedNames.forEach((name) => {
+        const item = document.createElement("div");
+        item.className = "file-manager-item" + (name === activeFileName ? " active" : "");
+        item.title = name;
+        item.onclick = () => {
+          openFileInTab(name);
+          closeModal("filesModal");
+        };
+
+        const icon = document.createElement("span");
+        icon.textContent = openTabs.includes(name) ? "📝" : "📄";
+        item.appendChild(icon);
+
+        const label = document.createElement("span");
+        label.className = "file-manager-name";
+        label.textContent = name;
+        item.appendChild(label);
+
+        const reload = document.createElement("span");
+        reload.className = "file-manager-remove";
+        reload.title = "Reload this file from disk";
+        reload.textContent = "🔄";
+        reload.onclick = (e) => reloadFileFromDisk(name, e);
+        item.appendChild(reload);
+
+        const remove = document.createElement("span");
+        remove.className = "file-manager-remove";
+        remove.textContent = "🗑️";
+        remove.onclick = (e) => removeFromProject(name, e);
+        item.appendChild(remove);
+
+        list.appendChild(item);
+      });
+
+      if (sortedNames.length === 0) {
+        const empty = document.createElement("div");
+        empty.textContent = "No files yet. Use Open, Open Folder or New.";
+        empty.style.opacity = "0.7";
+        list.appendChild(empty);
+      }
+    }
+
+    function triggerOpenFile() {
+      fileOpenMode = "open";
+      document.getElementById("fileInput").click();
+    }
+
+    // Re-syncs a single file already in the project: pick it again on disk
+    // and its content is updated in place (no duplicate is created).
+    // This is a manual substitute for live file-watching, which mobile
+    // Chrome doesn't support (no File System Access API on Android).
+    let reloadTargetFile = null;
+    function reloadFileFromDisk(name, event) {
+      event?.stopPropagation();
+      reloadTargetFile = name;
+      fileOpenMode = "reload-single";
+      document.getElementById("fileInput").click();
+    }
+
+    let fileOpenMode = "open"; // "open" | "reload-single"
+
+    function handleFileOpen(event) {
+      const files = Array.from(event.target.files || []);
+      const mode = fileOpenMode;
+      const target = reloadTargetFile;
+      reloadTargetFile = null;
+
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (mode === "reload-single" && target && projectFiles.has(target)) {
+            projectFiles.get(target).setValue(reader.result);
+            showNotification(`"${target}" reloaded from disk`);
+            persistFiles();
+            renderFileManager();
+          } else {
+            const finalName = addFile(file.name, reader.result, { openTab: true });
+            showNotification(`Loaded "${finalName}"`);
+          }
+        };
+        reader.onerror = () => showError(`Failed to read ${file.name}`);
+        reader.readAsText(file);
+      });
+      event.target.value = "";
+    }
+
+    let folderOpenMode = "open"; // "open" | "reload"
+
+    function triggerOpenFolder() {
+      if (NativeFS.available()) {
+        nativeOpenFolder("open");
+        return;
+      }
+      folderOpenMode = "open";
+      document.getElementById("folderInput").click();
+    }
+
+    // Re-syncs the whole project folder: files already in the project get
+    // their content updated in place, new files get added. Nothing already
+    // open in a tab gets closed or duplicated.
+    function triggerReloadFolder() {
+      if (NativeFS.available()) {
+        nativeOpenFolder("reload");
+        return;
+      }
+      folderOpenMode = "reload";
+      document.getElementById("folderInput").click();
+    }
+
+    // Native (APK) path: uses the Android document-tree picker (SAF) to get
+    // a real, persistent handle to the folder - unlike the web
+    // <input type="file"> flow, this can read AND write the actual files.
+    async function nativeOpenFolder(mode) {
+      try {
+        const uri = mode === "reload" && NativeFS.rootUri ? NativeFS.rootUri : await NativeFS.pickFolder();
+        showLoadingBar();
+        const files = await NativeFS.loadFolder(uri);
+        hideLoadingBar();
+
+        if (files.length === 0) {
+          showError("No .js/.ts/.json files found in that folder");
+          return;
+        }
+
+        let updatedCount = 0;
+        let addedCount = 0;
+        files.forEach(({ rel, content }) => {
+          if (mode === "reload" && projectFiles.has(rel)) {
+            projectFiles.get(rel).setValue(content);
+            updatedCount++;
+          } else {
+            addFile(rel, content, { openTab: false, persist: false });
+            addedCount++;
+          }
+        });
+
+        persistFiles();
+        renderFileManager();
+
+        if (mode === "reload") {
+          showNotification(`Folder reloaded: ${updatedCount} updated, ${addedCount} new`);
+        } else {
+          const entryName = projectFiles.has("main.js") ? "main.js" : projectFiles.has("index.js") ? "index.js" : Array.from(projectFiles.keys())[0];
+          openFileInTab(entryName);
+          showNotification(`Loaded ${files.length} file(s) from folder`);
+          showFileManager();
+        }
+      } catch (e) {
+        hideLoadingBar();
+        console.error(e);
+        showError("Couldn't open the folder: " + (e?.message || e));
+      }
+    }
+
+    const SUPPORTED_FILE_EXT = /\.(js|jsx|mjs|cjs|ts|tsx|json)$/i;
+    const SKIPPED_DIR_PATTERN = /(^|\/)(node_modules|\.git|dist|build|\.vscode)(\/|$)/i;
+
+    function handleFolderOpen(event) {
+      const mode = folderOpenMode;
+      const allFiles = Array.from(event.target.files || []);
+      const files = allFiles.filter((f) => {
+        const rel = sanitizeFileName(f.webkitRelativePath || f.name);
+        return SUPPORTED_FILE_EXT.test(rel) && !SKIPPED_DIR_PATTERN.test(rel);
+      });
+
+      if (files.length === 0) {
+        showError("No .js/.ts/.json files found in that folder");
+        event.target.value = "";
+        return;
+      }
+
+      // Strip the top-level folder name so relative imports in the code
+      // (e.g. "./utils/foo") line up with the paths we register in Monaco.
+      const firstRel = sanitizeFileName(files[0].webkitRelativePath || files[0].name);
+      const rootPrefix = firstRel.includes("/") ? firstRel.split("/")[0] + "/" : "";
+
+      let loaded = 0;
+      let updatedCount = 0;
+      let addedCount = 0;
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          let rel = sanitizeFileName(file.webkitRelativePath || file.name);
+          if (rootPrefix && rel.startsWith(rootPrefix)) rel = rel.slice(rootPrefix.length);
+
+          if (mode === "reload" && projectFiles.has(rel)) {
+            projectFiles.get(rel).setValue(reader.result);
+            updatedCount++;
+          } else {
+            addFile(rel, reader.result, { openTab: false, persist: false });
+            addedCount++;
+          }
+
+          loaded++;
+          if (loaded === files.length) {
+            persistFiles();
+            renderFileManager();
+            if (mode === "reload") {
+              showNotification(`Folder reloaded: ${updatedCount} updated, ${addedCount} new`);
+            } else {
+              const entryName = projectFiles.has("main.js") ? "main.js" : projectFiles.has("index.js") ? "index.js" : Array.from(projectFiles.keys())[0];
+              openFileInTab(entryName);
+              showNotification(`Loaded ${loaded} file(s) from folder`);
+              showFileManager();
+            }
+          }
+        };
+        reader.onerror = () => showError(`Failed to read ${file.name}`);
+        reader.readAsText(file);
+      });
+
+      event.target.value = "";
+    }
+
+    function createNewFile() {
+      const name = prompt("New file name:", "untitled.js");
+      if (!name) return;
+      addFile(name.trim(), "");
+    }
+
+    function renameActiveFile(newName) {
+      newName = sanitizeFileName(newName.trim());
+      if (!newName || newName === activeFileName) return;
+      if (projectFiles.has(newName)) {
+        showError("A file with that name already exists");
+        document.getElementById("filename").value = activeFileName;
+        return;
+      }
+      const oldName = activeFileName;
+      const model = projectFiles.get(oldName);
+      const content = model.getValue();
+      model.dispose();
+      projectFiles.delete(oldName);
+
+      const newModel = monaco.editor.createModel(content, languageForFile(newName), fileUri(newName));
+      newModel.onDidChangeContent(() => persistFilesDebounced());
+      projectFiles.set(newName, newModel);
+
+      const tabIdx = openTabs.indexOf(oldName);
+      if (tabIdx !== -1) openTabs[tabIdx] = newName;
+
+      activeFileName = newName;
+      editor.setModel(newModel);
+
+      const lang = languageForFile(newName);
+      const langSelect = document.getElementById("language");
+      if (langSelect && lang !== "json") langSelect.value = lang;
+      const compileBtn = document.getElementById("compileBtn");
+      if (compileBtn) compileBtn.style.display = lang === "typescript" ? "block" : "none";
+
+      renderTabs();
+      renderFileManager();
+      persistFiles();
+    }
+
+    let persistFilesTimer;
+    function persistFilesDebounced() {
+      clearTimeout(persistFilesTimer);
+      persistFilesTimer = setTimeout(persistFiles, 500);
+    }
+
+    function persistFiles() {
+      if (!document.getElementById("autoSaveEnabled")?.checked) return;
+      const data = {};
+      projectFiles.forEach((model, name) => {
+        data[name] = model.getValue();
+      });
+      localStorage.setItem("editorFiles", JSON.stringify(data));
+      localStorage.setItem("editorOpenTabs", JSON.stringify(openTabs));
+      localStorage.setItem("editorActiveFile", activeFileName || "");
+      // kept for backwards compatibility with older saves
+      localStorage.setItem("editorContent", editor ? editor.getValue() : "");
+
+      // Inside the APK, also write straight back to the real files on disk
+      // for anything that was opened from a native folder (not just the
+      // in-app cache above).
+      if (NativeFS.available()) {
+        projectFiles.forEach((model, name) => {
+          if (NativeFS.hasNativeHandle(name)) {
+            NativeFS.writeFile(name, model.getValue()).catch((e) => console.error(`Failed to auto-save "${name}" to disk`, e));
+          }
+        });
+      }
+    }
+
+    /*------loading bar related functions------ */
+    function showLoadingBar() {
+      document.getElementById("loadingBar").style.display = "block";
+      document.querySelector(".loading-progress").style.width = "0";
+    }
+    function updateLoadingProgress(current, total) {
+      document.querySelector(".loading-progress").style.width = `${(current / total) * 100}%`;
+    }
+    function hideLoadingBar() {
+      setTimeout(() => {
+        document.getElementById("loadingBar").style.display = "none";
+      }, 300);
+    }
+    function toggleToolbar() {
+      isToolbarVisible = !isToolbarVisible;
+      const toolbar = document.getElementById("toolbar");
+      const toggleBtn = document.getElementById("toolbar-toggle");
+
+      toolbar.classList.toggle("visible", isToolbarVisible);
+      toggleBtn.textContent = `${isToolbarVisible ? "△ Hide" : "▽ Show"} Toolbar`;
+    }
+
+    /*------type definition related functions------ */
+
+    async function loadTypeDefinitions() {
+      showLoadingBar();
+      monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+        allowNonTsExtensions: true,
+        moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+        target: monaco.languages.typescript.ScriptTarget.ES2020,
+        checkJs: true,
+      });
+
+      monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+        allowNonTsExtensions: true,
+        moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+        target: monaco.languages.typescript.ScriptTarget.ES2020,
+        strict: true,
+      });
+
+      typeLibs.forEach((lib) => {
+        lib.jsLib?.dispose();
+        lib.tsLib?.dispose();
+      });
+      typeLibs.clear();
+
+      const totalModules = MODULES.length;
+      let loadedModules = 0;
+
+      for (const module of MODULES) {
+        const cacheKey = `${module.name}@${module.currentVersion}`;
+        try {
+          let types = await TypeDefCache.get(cacheKey);
+          if (!types) {
+            const response = await fetch(module.typesUrl(module.currentVersion));
+            if (!response.ok) {
+              showError(`Failed to load ${module.name}@${module.currentVersion}`);
+              throw new Error(`HTTP ${response.status}`);
+            }
+            types = await response.text();
+            await TypeDefCache.set(cacheKey, types);
+          }
+
+          const libJS = monaco.languages.typescript.javascriptDefaults.addExtraLib(`declare module "${module.name}" { ${types} }`, `file:///node_modules/${module.name}/index.d.ts`);
+          const libTS = monaco.languages.typescript.typescriptDefaults.addExtraLib(`declare module "${module.name}" { ${types} }`, `file:///node_modules/${module.name}/index.d.ts`);
+
+          typeLibs.set(module.name, { jsLib: libJS, tsLib: libTS });
+        } catch (error) {
+          console.error(`Failed to load ${module.name}@${module.currentVersion}:`, error);
+          showError(`Failed to load ${module.name}@${module.currentVersion}`);
+        }
+        loadedModules++;
+        updateLoadingProgress(loadedModules, totalModules);
+      }
+      hideLoadingBar();
+    }
+
+    async function loadSelectedVersions() {
+      showLoadingBar();
+
+      for (const module of MODULES) {
+        const selectedVersion = document.getElementById(module.selectorId).value;
+        console.log(`Updating ${module.name} to version ${selectedVersion}`);
+        module.currentVersion = selectedVersion;
+      }
+
+      await loadTypeDefinitions();
+      closeModal("versionModal");
+      editor.setValue(editor.getValue());
+
+      hideLoadingBar();
+    }
+
+    let isClicked = false;
+    async function showVersions() {
+      if (isClicked) return;
+      editor.setSelection({ startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 });
+      document.activeElement?.blur();
+      isClicked = true;
+      const versionSelectors = document.getElementById("versionSelectors");
+      versionSelectors.innerHTML = "";
+
+      const totalModules = MODULES.length;
+      let loadedModules = 0;
+
+      showLoadingBar();
+
+      for (const module of MODULES) {
+        const versions = await fetchVersions(module.name);
+        const select = createVersionSelector(module, versions);
+        versionSelectors.appendChild(select);
+        loadedModules++;
+        updateLoadingProgress(loadedModules, totalModules);
+      }
+
+      hideLoadingBar();
+
+      isClicked = false;
+      document.getElementById("versionModal").style.display = "block";
+    }
+
+    async function fetchVersions(packageName) {
+      try {
+        const response = await fetch(`https://data.jsdelivr.com/v1/package/npm/${packageName}`);
+        if (!response.ok) {
+          showError(`Failed to fetch versions for ${packageName}`);
+          throw new Error(`Failed to fetch versions for ${packageName}: HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        return data.versions.reverse();
+      } catch (error) {
+        showError(`Failed to fetch versions for ${packageName}`);
+        console.error(`Failed to fetch versions for ${packageName}:`, error);
+        return [];
+      }
+    }
+
+    function createVersionSelector(module, versions) {
+      const container = document.createElement("div");
+      const label = document.createElement("div");
+      label.className = "module-label";
+      label.textContent = module.name;
+
+      const select = document.createElement("select");
+      select.className = "version-select";
+      select.id = module.selectorId;
+      select.innerHTML = versions.map((v) => `<option value="${v}" ${v === module.currentVersion ? "selected" : ""}>${v}</option>`).join("");
+
+      container.appendChild(label);
+      container.appendChild(select);
+
+      if (versions.length === 0) {
+        select.disabled = true;
+        select.innerHTML = `<option>No versions available</option>`;
+      }
+      return container;
+    }
+
+    /*------settings related functions------ */
+    function getSettingElements() {
+      return {
+        miniMap: document.getElementById("minimap"),
+        wordWrap: document.getElementById("wordWrap"),
+        fontSize: document.getElementById("fontSize"),
+        lineNumbers: document.getElementById("lineNumbers"),
+        renderWhitespace: document.getElementById("renderWhitespace"),
+        theme: document.getElementById("theme"),
+        autoClosingBrackets: document.getElementById("autoClosingBrackets"),
+        autoSaveInterval: document.getElementById("autoSaveInterval"),
+        autoSaveEnabled: document.getElementById("autoSaveEnabled"),
+        language: document.getElementById("language"),
+      };
+    }
+
+    function getStoredSettings() {
+      return {
+        storedMinimap: localStorage.getItem("minimap"),
+        storedWordWrap: localStorage.getItem("wordWrap"),
+        storedFontSize: localStorage.getItem("fontSize"),
+        storedLineNumbers: localStorage.getItem("lineNumbers"),
+        storedRenderWhitespace: localStorage.getItem("renderWhitespace"),
+        storedTheme: localStorage.getItem("theme"),
+        storedAutoClosingBrackets: localStorage.getItem("autoClosingBrackets"),
+        storedAutoSaveInterval: localStorage.getItem("autoSaveInterval"),
+        storedAutoSaveEnabled: localStorage.getItem("autoSaveEnabled"),
+        storedLanguage: localStorage.getItem("language"),
+      };
+    }
+    function showSettings() {
+      editor.setSelection({ startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 });
+      document.activeElement?.blur();
+      const { miniMap, wordWrap, fontSize, lineNumbers, renderWhitespace, theme, autoClosingBrackets, language } = getSettingElements();
+
+      if (minimap && wordWrap && fontSize && lineNumbers && renderWhitespace && theme && autoClosingBrackets && language) {
+        document.getElementById("settingsModal").style.display = "block";
+      } else {
+        showError("One or more settings elements are missing in the DOM.");
+        console.error("One or more settings elements are missing in the DOM.");
+      }
+    }
+    function applySettings() {
+      startAutoSave();
+      const theme = document.getElementById("theme").value;
+      const selectedLanguage = document.getElementById("language").value;
+      const compileBtn = document.getElementById("compileBtn");
+      if (compileBtn) compileBtn.style.display = selectedLanguage === "typescript" ? "block" : "none";
+      document.body.setAttribute("data-theme", theme);
+      const selectedTheme = document.getElementById("theme").value;
+      editor.updateOptions({
+        theme: selectedTheme,
+        autoClosingBrackets: document.getElementById("autoClosingBrackets").checked,
+        wordWrap: document.getElementById("wordWrap").checked ? "on" : "off",
+        fontSize: parseInt(document.getElementById("fontSize").value, 10),
+        lineNumbers: document.getElementById("lineNumbers").checked ? "on" : "off",
+        renderWhitespace: document.getElementById("renderWhitespace").checked ? "all" : "none",
+        minimap: { enabled: document.getElementById("minimap").checked },
+      });
+      const model = editor.getModel();
+      monaco.editor.setModelLanguage(model, selectedLanguage);
+
+      // Apply body class for theme change
+      document.body.classList.remove("high-contrast-theme", "light-theme");
+      if (selectedTheme === "vs") {
+        document.body.classList.add("light-theme");
+      } else if (selectedTheme === "hc-black") {
+        document.body.classList.add("high-contrast-theme");
+      } else {
+        document.body.classList.remove("light-theme", "high-contrast-theme");
+      }
+
+      closeModal("settingsModal");
+      saveSetting();
+    }
+
+    function saveSetting() {
+      const { miniMap, wordWrap, fontSize, lineNumbers, renderWhitespace, theme, autoClosingBrackets } = getSettingElements();
+
+      localStorage.setItem("minimap", miniMap.checked);
+      localStorage.setItem("wordWrap", wordWrap.checked);
+      localStorage.setItem("fontSize", fontSize.value);
+      localStorage.setItem("lineNumbers", lineNumbers.checked);
+      localStorage.setItem("renderWhitespace", renderWhitespace.checked);
+      localStorage.setItem("theme", theme.value);
+      localStorage.setItem("autoClosingBrackets", autoClosingBrackets.checked);
+      localStorage.setItem("autoSaveInterval", autoSaveInterval.value);
+      localStorage.setItem("autoSaveEnabled", autoSaveEnabled.checked);
+      localStorage.setItem("language", language.value);
+    }
+
+    function loadSetting() {
+      const { miniMap, wordWrap, fontSize, lineNumbers, renderWhitespace, theme, autoClosingBrackets, language } = getSettingElements();
+      const {
+        storedMinimap,
+        storedWordWrap,
+        storedFontSize,
+        storedLineNumbers,
+        storedRenderWhitespace,
+        storedTheme,
+        storedAutoClosingBrackets,
+        storedAutoSaveInterval,
+        storedAutoSaveEnabled,
+        storedLanguage,
+      } = getStoredSettings();
+
+      miniMap.checked = storedMinimap ? storedMinimap === "true" : false;
+      wordWrap.checked = storedWordWrap ? storedWordWrap === "true" : false;
+      fontSize.value = storedFontSize || 13;
+      lineNumbers.checked = storedLineNumbers ? storedLineNumbers === "true" : true;
+      renderWhitespace.checked = storedRenderWhitespace ? storedRenderWhitespace === "true" : false;
+      theme.value = storedTheme || "vs-dark";
+      autoClosingBrackets.checked = storedAutoClosingBrackets ? storedAutoClosingBrackets === "true" : true;
+      autoSaveInterval.value = storedAutoSaveInterval || 30;
+      autoSaveEnabled.checked = storedAutoSaveEnabled ? storedAutoSaveEnabled === "true" : true;
+      language.value = storedLanguage || "javascript";
+    }
+
+    async function initializeEditor() {
+      loadSetting();
+      // Add theme initialization
+      const savedTheme = localStorage.getItem("theme") || "vs-dark";
+      document.body.setAttribute("data-theme", savedTheme);
+      require.config({
+        paths: {
+          vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs",
+        },
+      });
+      require(["vs/editor/editor.main"], async () => {
+        await loadTypeDefinitions();
+
+        // ========== THEMES ========== //
+        // add new themes here following the same format
+        monaco.editor.defineTheme("dracula", {
+          base: "vs-dark",
+          inherit: true,
+          rules: [
+            { token: "", foreground: "#f8f8f2", background: "#282a36" },
+            { token: "comment", foreground: "#6272a4" },
+            { token: "keyword", foreground: "#ff79c6" },
+            { token: "number", foreground: "#bd93f9" },
+            { token: "string", foreground: "#f1fa8c" },
+            { token: "identifier", foreground: "#50fa7b" },
+          ],
+          colors: {
+            "editor.background": "#282a36",
+            "editor.foreground": "#f8f8f2",
+            "editor.lineHighlightBackground": "#44475a",
+            "editorLineNumber.foreground": "#6272a4",
+          },
+        });
+
+        monaco.editor.defineTheme("monokai", {
+          base: "vs-dark",
+          inherit: true,
+          rules: [
+            { token: "", foreground: "#f8f8f2", background: "#272822" },
+            { token: "comment", foreground: "#75715e" },
+            { token: "keyword", foreground: "#f92672" },
+            { token: "number", foreground: "#ae81ff" },
+            { token: "string", foreground: "#e6db74" },
+            { token: "identifier", foreground: "#a6e22e" },
+          ],
+          colors: {
+            "editor.background": "#272822",
+            "editor.foreground": "#f8f8f2",
+            "editor.lineHighlightBackground": "#3e3d32",
+            "editorLineNumber.foreground": "#75715e",
+          },
+        });
+
+        monaco.editor.defineTheme("solarized-dark", {
+          base: "vs-dark",
+          inherit: true,
+          rules: [
+            { token: "", foreground: "#839496", background: "#002b36" },
+            { token: "comment", foreground: "#586e75" },
+            { token: "keyword", foreground: "#859900" },
+            { token: "number", foreground: "#d33682" },
+            { token: "string", foreground: "#2aa198" },
+            { token: "identifier", foreground: "#b58900" },
+          ],
+          colors: {
+            "editor.background": "#002b36",
+            "editor.foreground": "#839496",
+            "editor.lineHighlightBackground": "#073642",
+            "editorLineNumber.foreground": "#586e75",
+          },
+        });
+
+        monaco.editor.defineTheme("solarized-light", {
+          base: "vs",
+          inherit: true,
+          rules: [
+            { token: "", foreground: "#657b83", background: "#fdf6e3" },
+            { token: "comment", foreground: "#93a1a1" },
+            { token: "keyword", foreground: "#859900" },
+            { token: "number", foreground: "#d33682" },
+            { token: "string", foreground: "#2aa198" },
+            { token: "identifier", foreground: "#b58900" },
+          ],
+          colors: {
+            "editor.background": "#fdf6e3",
+            "editor.foreground": "#657b83",
+            "editor.lineHighlightBackground": "#eee8d5",
+            "editorLineNumber.foreground": "#93a1a1",
+          },
+        });
+
+        monaco.editor.defineTheme("nord", {
+          base: "vs-dark",
+          inherit: true,
+          rules: [
+            { token: "", foreground: "#d8dee9", background: "#2e3440" },
+            { token: "comment", foreground: "#4c566a" },
+            { token: "keyword", foreground: "#81a1c1" },
+            { token: "number", foreground: "#b48ead" },
+            { token: "string", foreground: "#a3be8c" },
+            { token: "identifier", foreground: "#ebcb8b" },
+          ],
+          colors: {
+            "editor.background": "#2e3440",
+            "editor.foreground": "#d8dee9",
+            "editor.lineHighlightBackground": "#3b4252",
+            "editorLineNumber.foreground": "#4c566a",
+          },
+        });
+
+        monaco.editor.defineTheme("gruvbox", {
+          base: "vs-dark",
+          inherit: true,
+          rules: [
+            { token: "", foreground: "#ebdbb2", background: "#282828" },
+            { token: "comment", foreground: "#665c54" },
+            { token: "keyword", foreground: "#fb4934" },
+            { token: "number", foreground: "#d3869b" },
+            { token: "string", foreground: "#b8bb26" },
+            { token: "identifier", foreground: "#fabd2f" },
+          ],
+          colors: {
+            "editor.background": "#282828",
+            "editor.foreground": "#ebdbb2",
+            "editor.lineHighlightBackground": "#3c3836",
+            "editorLineNumber.foreground": "#665c54",
+          },
+        });
+
+        const {
+          storedMinimap,
+          storedWordWrap,
+          storedFontSize,
+          storedLineNumbers,
+          storedRenderWhitespace,
+          storedTheme,
+          storedAutoClosingBrackets,
+          storedAutoSaveInterval,
+          storedAutoSaveEnabled,
+          storedLanguage,
+        } = getStoredSettings();
+
+        // Restore previously opened files (if auto-save is enabled), otherwise start fresh
+        let filesToRestore = {};
+        if (document.getElementById("autoSaveEnabled").checked) {
+          try {
+            filesToRestore = JSON.parse(localStorage.getItem("editorFiles") || "{}");
+          } catch (e) {
+            filesToRestore = {};
+          }
+        }
+        if (Object.keys(filesToRestore).length === 0) {
+          filesToRestore = { "main.js": defaultCode };
+        }
+
+        // Names may have been saved before the sanitizer existed (garbled
+        // Android content-provider paths) - re-sanitize on restore too, and
+        // keep a map so the saved tabs/active-file references still resolve.
+        const restoredNameMap = new Map(); // rawName -> sanitized/unique name
+        Object.entries(filesToRestore).forEach(([rawName, content]) => {
+          const name = uniqueFileName(sanitizeFileName(rawName));
+          const model = monaco.editor.createModel(content, languageForFile(name), fileUri(name));
+          model.onDidChangeContent(() => persistFilesDebounced());
+          projectFiles.set(name, model);
+          restoredNameMap.set(rawName, name);
+        });
+
+        let storedOpenTabs = [];
+        try {
+          storedOpenTabs = JSON.parse(localStorage.getItem("editorOpenTabs") || "[]");
+        } catch (e) {
+          storedOpenTabs = [];
+        }
+        openTabs = storedOpenTabs.map((n) => restoredNameMap.get(n)).filter((name) => name && projectFiles.has(name));
+
+        const storedActiveFileRaw = localStorage.getItem("editorActiveFile");
+        const storedActiveFile = restoredNameMap.get(storedActiveFileRaw);
+
+        if (openTabs.length === 0) {
+          openTabs = [projectFiles.has(storedActiveFile) ? storedActiveFile : projectFiles.keys().next().value];
+        }
+
+        activeFileName = openTabs.includes(storedActiveFile) ? storedActiveFile : openTabs[0];
+
+        editor = monaco.editor.create(document.getElementById("editor"), {
+          model: projectFiles.get(activeFileName),
+          theme: storedTheme || "vs-dark",
+          automaticLayout: true,
+          minimap: { enabled: storedMinimap ? storedMinimap === "true" : false },
+          wordWrap: storedWordWrap === "true" ? "on" : "off",
+          fontSize: parseInt(storedFontSize ? Number(storedFontSize) : 13),
+          lineNumbers: storedLineNumbers ? (storedLineNumbers === "true" ? "on" : "off") : "on",
+          autoClosingBrackets: storedAutoClosingBrackets ? (storedAutoClosingBrackets === "true" ? "always" : "never") : "always",
+          renderWhitespace: storedRenderWhitespace ? (storedRenderWhitespace === "true" ? "all" : "none") : "none",
+          highlightActiveLine: true,
+          lineNumbersMinChars: 2,
+        });
+
+        // Sync filename input, language selector and tabs with the active file
+        document.getElementById("filename").value = activeFileName;
+        const activeLang = languageForFile(activeFileName);
+        if (activeLang !== "json") document.getElementById("language").value = activeLang;
+        const compileBtnInit = document.getElementById("compileBtn");
+        if (compileBtnInit) compileBtnInit.style.display = activeLang === "typescript" ? "block" : "none";
+        renderTabs();
+        renderFileManager();
+
+        document.getElementById("filename").addEventListener("change", () => {
+          renameActiveFile(document.getElementById("filename").value);
+        });
+
+        // Mobile selection functionality has been removed
+
+        function selectAll() {
+          editor.focus();
+          const fullRange = editor.getModel().getFullModelRange();
+          editor.setSelection(fullRange);
+        }
+
+        function copy() {
+          const selection = editor.getSelection();
+          const selectedText = selection.isEmpty() ? editor.getModel().getValue() : editor.getModel().getValueInRange(selection);
+          navigator.clipboard
+            .writeText(selectedText)
+            .then(() => {
+              console.log("Copied to clipboard");
+              showNotification("Copied to clipboard");
+            })
+            .catch((err) => {
+              console.error("Error in copying", err);
+              showError("Error in copying");
+            });
+        }
+
+        function copyWithCodeBlock() {
+          const selection = editor.getSelection();
+          const language = document.getElementById("language").value;
+          const lang = language === "javascript" ? "js" : language === "typescript" ? "ts" : "";
+          const selectedText = `\`\`\`${lang}\n${selection.isEmpty() ? editor.getModel().getValue() : editor.getModel().getValueInRange(selection)}\n\`\`\``;
+          navigator.clipboard
+            .writeText(selectedText)
+            .then(() => {
+              console.log("Copied to clipboard");
+              showNotification("Copied to clipboard");
+            })
+            .catch((err) => {
+              console.error("Error in copying", err);
+              showError("Error in copying");
+            });
+        }
+
+        function cut() {
+          const selection = editor.getSelection();
+          const selectedText = editor.getModel().getValueInRange(selection);
+          navigator.clipboard
+            .writeText(selectedText)
+            .then(() => {
+              editor.executeEdits("", [{ range: selection, text: "" }]);
+            })
+            .catch((err) => {
+              editor.executeEdits("", [{ range: selection, text: "" }]);
+            });
+          editor.focus();
+        }
+
+        function paste() {
+          navigator.clipboard
+            .readText()
+            .then((text) => {
+              const selection = editor.getSelection();
+              editor.executeEdits("", [{ range: selection, text }]);
+              console.log("Pasted from clipboard");
+            })
+            .catch((err) => {
+              console.error("Failed to paste: ", err);
+            });
+        }
+
+        function formatSelection() {
+          document.activeElement?.blur();
+          editor.getAction("editor.action.formatSelection").run();
+        }
+
+        window.copy = copy;
+        window.copyWithCodeBlock = copyWithCodeBlock;
+        window.cut = cut;
+        window.paste = paste;
+        window.formatSelection = formatSelection;
+        window.selectAll = selectAll;
+
+        function getLineYCoordinate(position) {
+          const lineTop = editor.getTopForLineNumber(position.lineNumber);
+          const editorCoords = editorElement.getBoundingClientRect();
+          return window.scrollY + editorCoords.top + lineTop - tapsHeight;
+        }
+
+        function isPositionInSelection(position) {
+          const selection = editor.getSelection();
+          if (!selection || selection.isEmpty()) {
+            return false;
+          }
+
+          const startPosition = selection.getStartPosition();
+          const endPosition = selection.getEndPosition();
+
+          return (
+            (position.lineNumber > startPosition.lineNumber || (position.lineNumber === startPosition.lineNumber && position.column >= startPosition.column)) &&
+            (position.lineNumber < endPosition.lineNumber || (position.lineNumber === endPosition.lineNumber && position.column <= endPosition.column))
+          );
+        }
+
+        const editorElement = document.getElementById("editor");
+        
+        // Mobile selection functionality has been removed
+        
+        editorElement.addEventListener("click", (event) => {
+          event.stopPropagation();
+        });
+
+      });
+
+      startAutoSave();
+    }
+
+    let autoSaveTimer;
+    function startAutoSave() {
+      const interval = parseInt(document.getElementById("autoSaveInterval").value) * 1000;
+      const enabled = document.getElementById("autoSaveEnabled").checked;
+
+      if (autoSaveTimer) clearInterval(autoSaveTimer);
+      if (!enabled) return;
+
+      autoSaveTimer = setInterval(() => {
+        persistFiles();
+      }, interval);
+    }
+
+    function closeModal(modalId) { document.getElementById(modalId).style.display = "none"; }
+
+    async function formatCode() { await editor.getAction("editor.action.formatDocument").run(); }
+
+    document.addEventListener("keydown", function (event) {
+      if (event.ctrlKey && event.key === "s") {
+        event.preventDefault();
+        saveCode();
+      }
+    });
+
+    async function saveCode() {
+      const fileName = document.getElementById("filename").value || "minecraft_script.js";
+      if (fileName !== activeFileName) renameActiveFile(fileName);
+      const code = editor.getValue();
+      const activeName = activeFileName; // renameActiveFile may have updated it
+
+      if (NativeFS.available() && NativeFS.hasNativeHandle(activeName)) {
+        try {
+          await NativeFS.writeFile(activeName, code);
+          showNotification(`Saved "${activeName}" to disk`);
+        } catch (e) {
+          console.error(e);
+          showError(`Couldn't save "${activeName}": ${e?.message || e}`);
+        }
+        return;
+      }
+
+      // Web build, or a file that was never opened from a real folder
+      // (e.g. created with "New") - fall back to a normal browser download.
+      const blob = new Blob([code], { type: "text/javascript" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      showNotification(`Saved "${fileName}"`);
+    }
+
+    function compileTypeScript() {
+      if (document.getElementById("language").value !== "typescript") {
+        showError("Compilation is only available for TypeScript files");
+        return;
+      }
+
+      const code = editor.getValue();
+
+      try {
+        const result = ts.transpileModule(code, {
+          compilerOptions: {
+            target: ts.ScriptTarget.ES2020,
+            module: ts.ModuleKind.ESNext,
+            strict: true
+          }
+        });
+
+        document.getElementById("language").value = "javascript";
+        monaco.editor.setModelLanguage(editor.getModel(), "javascript");
+        editor.setValue(result.outputText);
+        showNotification("Successfully compiled to JavaScript");
+        saveSetting();
+      } catch (error) {
+        showError(`Compilation error: ${error.message}`);
+        console.error("TypeScript compilation error:", error);
+      }
+    }
+
+    // Save content when closing the tab
+    window.addEventListener("beforeunload", () => {
+      persistFiles();
+    });
+
+    // Check if user is on mobile and show keyboard suggestion
+    function isMobileDevice() {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    // Show keyboard suggestion popup for mobile users
+    function showKeyboardSuggestion() {
+      // Check if user has already dismissed the popup
+      if (!isMobileDevice() || localStorage.getItem('keyboardSuggestionDismissed') === 'true') {
+        return;
+      }
+      
+      const popup = document.createElement('div');
+      popup.id = 'keyboard-suggestion-popup';
+      popup.style.position = 'fixed';
+      popup.style.bottom = '20px';
+      popup.style.left = '50%';
+      popup.style.transform = 'translateX(-50%)';
+      popup.style.backgroundColor = 'var(--modal-bg)';
+      popup.style.color = 'var(--text-color)';
+      popup.style.padding = '15px 20px';
+      popup.style.borderRadius = '8px';
+      popup.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+      popup.style.zIndex = '10000';
+      popup.style.maxWidth = '90%';
+      popup.style.textAlign = 'center';
+      popup.style.border = '1px solid var(--button-border)';
+      
+      popup.innerHTML = `
+        <p>For a better coding experience on mobile, try <strong>Hacker's Keyboard</strong>!</p>
+        <a href="https://play.google.com/store/apps/details?id=com.anysoftkeyboard.languagepack.hackerkeyboardlayout&hl=en" 
+           target="_blank" 
+           class="keyboard-suggestion-link"
+           style="display: inline-block; 
+                  margin-top: 10px; 
+                  padding: 8px 16px; 
+                  background-color: var(--button-bg); 
+                  color: var(--text-color); 
+                  text-decoration: none; 
+                  border-radius: 4px;
+                  border: 1px solid var(--button-border);">
+          Get Hacker's Keyboard
+        </a>
+        <button class="dismiss-button" 
+                style="position: absolute; 
+                       top: 5px; 
+                       right: 5px; 
+                       background: none; 
+                       border: none; 
+                       color: var(--text-color); 
+                       cursor: pointer;
+                       font-size: 16px;
+                       padding: 5px;">
+          ×
+        </button>
+      `;
+      
+      document.body.appendChild(popup);
+      
+      // Add event listeners
+      const dismissButton = popup.querySelector('.dismiss-button');
+      const suggestionLink = popup.querySelector('.keyboard-suggestion-link');
+      
+      // Handle dismiss button click
+      dismissButton.addEventListener('click', () => {
+        localStorage.setItem('keyboardSuggestionDismissed', 'true');
+        popup.style.display = 'none';
+      });
+      
+      // Also dismiss when clicking the link (optional: remove if you want to track link clicks differently)
+      suggestionLink.addEventListener('click', () => {
+        localStorage.setItem('keyboardSuggestionDismissed', 'true');
+        // Don't hide immediately to allow the link to open
+        setTimeout(() => popup.style.display = 'none', 100);
+      });
+    }
+
+    // Initialize the editor and show keyboard suggestion if on mobile
+    initializeEditor();
+    showKeyboardSuggestion();
+  </script>
+</body>
+
+</html>
