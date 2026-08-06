@@ -706,16 +706,22 @@
     /*------native filesystem adapter (Capacitor / Android only)------ */
     // On the web build this whole module is inert (available() is false and
     // every caller falls back to the old <input type=file> flow). Inside the
-    // Capacitor APK, it uses the OS document-tree picker (SAF) to get a
-    // *persistent* handle to a real folder on disk (e.g. your behavior pack
-    // folder), so Open Folder / Save / Reload Folder read and write the
-    // actual files instead of an in-memory copy.
+    // Capacitor APK, it uses a small custom native plugin ("DirectoryReader",
+    // see native-plugin/DirectoryReaderPlugin.java) to get a *persistent*
+    // handle to a real folder on disk (e.g. your behavior pack folder) via
+    // the Android system folder picker (SAF), so Open Folder / Save / Reload
+    // Folder read and write the actual files instead of an in-memory copy.
+    //
+    // We use our own plugin instead of @capacitor/filesystem here because
+    // Filesystem.readdir does not support content:// URIs (which is exactly
+    // what the Android folder picker returns) - it throws
+    // "'readdir' not supported for content:// URIs".
     const NativeFS = (() => {
       function available() {
         return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
       }
-      function FilePickerPlugin() {
-        return window.Capacitor?.Plugins?.FilePicker;
+      function DirectoryReaderPlugin() {
+        return window.Capacitor?.Plugins?.DirectoryReader;
       }
       function FilesystemPlugin() {
         return window.Capacitor?.Plugins?.Filesystem;
@@ -728,8 +734,8 @@
       const nativeUriByFile = new Map(); // relative name -> content:// document uri
 
       async function pickFolder() {
-        const result = await FilePickerPlugin().pickDirectory();
-        rootUri = result.path;
+        const result = await DirectoryReaderPlugin().pickDirectory();
+        rootUri = result.uri;
         try {
           await PreferencesPlugin().set({ key: "vh_root_uri", value: rootUri });
         } catch (e) {
@@ -748,26 +754,24 @@
         return rootUri;
       }
 
-      async function listFolderRecursive(uri, relBase, out) {
-        const { files } = await FilesystemPlugin().readdir({ path: uri });
-        for (const entry of files) {
-          const rel = relBase ? `${relBase}/${entry.name}` : entry.name;
-          if (entry.type === "directory") {
-            if (SKIPPED_DIR_PATTERN.test(rel + "/")) continue;
-            await listFolderRecursive(entry.uri, rel, out);
-          } else if (SUPPORTED_FILE_EXT.test(entry.name)) {
-            const { data } = await FilesystemPlugin().readFile({ path: entry.uri, encoding: "utf8" });
-            out.push({ rel, uri: entry.uri, content: data });
-          }
-        }
-      }
-
       // Reads every supported file under `uri` and returns
       // [{ rel, uri, content }]. Also remembers each file's real content://
-      // uri so writeFile() can save straight back to disk later.
+      // uri so writeFile() can save straight back to disk later. Directory
+      // traversal (including skipping node_modules/.git/etc.) happens
+      // natively in DirectoryReaderPlugin.listTree.
       async function loadFolder(uri) {
+        const { files } = await DirectoryReaderPlugin().listTree({ uri });
+        const candidates = files.filter((f) => SUPPORTED_FILE_EXT.test(f.name));
+
         const out = [];
-        await listFolderRecursive(uri, "", out);
+        for (const entry of candidates) {
+          try {
+            const { data } = await DirectoryReaderPlugin().readTextFile({ uri: entry.uri });
+            out.push({ rel: entry.rel, uri: entry.uri, content: data });
+          } catch (e) {
+            console.error(`Failed to read "${entry.rel}"`, e);
+          }
+        }
         out.forEach((f) => nativeUriByFile.set(f.rel, f.uri));
         return out;
       }
@@ -783,12 +787,14 @@
       async function writeFile(rel, content) {
         const uri = nativeUriByFile.get(rel);
         if (!uri) throw new Error(`No native file handle for "${rel}" (it wasn't opened from disk)`);
-        await FilesystemPlugin().writeFile({ path: uri, data: content, encoding: "utf8" });
+        await DirectoryReaderPlugin().writeTextFile({ uri, data: content });
       }
 
       // Small on-disk cache for the Bedrock API type definitions so they
       // survive app restarts and work offline, instead of re-downloading
-      // from the CDN every time.
+      // from the CDN every time. This uses @capacitor/filesystem's normal
+      // app-private "DATA" directory (a plain path, not a content:// uri),
+      // so the readdir limitation above doesn't apply here.
       async function getCachedTypeDef(key) {
         try {
           const { data } = await FilesystemPlugin().readFile({ path: `typedefs/${key}.d.ts`, directory: "DATA", encoding: "utf8" });
@@ -1580,6 +1586,9 @@
 
     async function initializeEditor() {
       loadSetting();
+      if (NativeFS.available()) {
+        await NativeFS.restoreLastFolderUri();
+      }
       // Add theme initialization
       const savedTheme = localStorage.getItem("theme") || "vs-dark";
       document.body.setAttribute("data-theme", savedTheme);
