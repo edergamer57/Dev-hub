@@ -501,6 +501,17 @@
       overflow-wrap: anywhere;
     }
 
+    .file-manager-dir {
+      font-weight: 600;
+    }
+
+    .file-manager-arrow {
+      width: 14px;
+      display: inline-block;
+      text-align: center;
+      opacity: 0.7;
+    }
+
     .file-manager-remove {
       opacity: 0.6;
       padding: 4px 6px;
@@ -607,6 +618,18 @@
       <div id="fileManagerList"><!-- files listed here dynamically --></div>
     </div>
   </div>
+
+  <!-- backup / version history -->
+  <div id="backupModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="backupModalTitle">Backups</h3>
+        <span class="modal-close" onclick="closeModal('backupModal')">&times;</span>
+      </div>
+      <div id="backupHistoryList"><!-- backups listed here dynamically --></div>
+    </div>
+  </div>
+
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/typescript/5.3.3/typescript.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.js"></script>
@@ -790,6 +813,32 @@
         await DirectoryReaderPlugin().writeTextFile({ uri, data: content });
       }
 
+      async function readFile(rel) {
+        const uri = nativeUriByFile.get(rel);
+        if (!uri) throw new Error(`No native file handle for "${rel}"`);
+        const { data } = await DirectoryReaderPlugin().readTextFile({ uri });
+        return data;
+      }
+
+      // Re-links every file already in the project to its real content://
+      // uri, WITHOUT touching editor content. This is what makes Save work
+      // right after the app is (re)started: the in-memory uri map above is
+      // lost on process death, but the picked folder's permission survives
+      // (SAF persisted permission), so we just need to re-list it and match
+      // names back up - no re-read of file contents needed.
+      async function refreshHandles(uri) {
+        if (!uri) return 0;
+        const { files } = await DirectoryReaderPlugin().listTree({ uri });
+        let matched = 0;
+        files.forEach((f) => {
+          if (SUPPORTED_FILE_EXT.test(f.name)) {
+            nativeUriByFile.set(f.rel, f.uri);
+            matched++;
+          }
+        });
+        return matched;
+      }
+
       // Small on-disk cache for the Bedrock API type definitions so they
       // survive app restarts and work offline, instead of re-downloading
       // from the CDN every time. This uses @capacitor/filesystem's normal
@@ -823,6 +872,8 @@
         registerUri,
         hasNativeHandle,
         writeFile,
+        readFile,
+        refreshHandles,
         getCachedTypeDef,
         setCachedTypeDef,
         get rootUri() {
@@ -833,6 +884,170 @@
 
     // Cross-platform cache: real disk file inside the APK, localStorage on
     // the plain web build (still persists across sessions in the browser).
+    /*------backup / version history related functions------ */
+    // Every time Save writes to a real file on disk, we first snapshot
+    // whatever was there before the overwrite. Keeps the last N snapshots
+    // per file so a bad save can be undone from the Backups panel.
+    // Native (APK): snapshots live in the app's own private "DATA" folder
+    // (@capacitor/filesystem, a normal path - not a content:// uri, so it's
+    // reliable), under backups/<safe-name>/<timestamp>.bak
+    // Web build: same idea but in localStorage, as a small ring buffer.
+    const BackupManager = {
+      maxPerFile: 20,
+
+      _key(rel) {
+        return rel.replace(/[\\/]/g, "__");
+      },
+
+      async save(rel, content) {
+        const key = this._key(rel);
+        const ts = new Date().toISOString().replace(/[:.]/g, "-");
+        if (NativeFS.available()) {
+          try {
+            await window.Capacitor.Plugins.Filesystem.mkdir({ path: `backups/${key}`, directory: "DATA", recursive: true }).catch(() => {});
+            await window.Capacitor.Plugins.Filesystem.writeFile({ path: `backups/${key}/${ts}.bak`, directory: "DATA", data: content, encoding: "utf8" });
+            await this._prune(key);
+          } catch (e) {
+            console.error(`Failed to back up "${rel}"`, e);
+          }
+        } else {
+          try {
+            const listKey = `backup-list:${key}`;
+            const list = JSON.parse(localStorage.getItem(listKey) || "[]");
+            list.push(ts);
+            localStorage.setItem(`backup:${key}:${ts}`, content);
+            while (list.length > this.maxPerFile) {
+              const old = list.shift();
+              localStorage.removeItem(`backup:${key}:${old}`);
+            }
+            localStorage.setItem(listKey, JSON.stringify(list));
+          } catch (e) {
+            /* storage full - skip this backup rather than breaking Save */
+          }
+        }
+      },
+
+      async list(rel) {
+        const key = this._key(rel);
+        if (NativeFS.available()) {
+          try {
+            const { files } = await window.Capacitor.Plugins.Filesystem.readdir({ path: `backups/${key}`, directory: "DATA" });
+            return files
+              .map((f) => f.name)
+              .sort()
+              .reverse();
+          } catch (e) {
+            return [];
+          }
+        }
+        const listKey = `backup-list:${key}`;
+        return JSON.parse(localStorage.getItem(listKey) || "[]")
+          .slice()
+          .reverse()
+          .map((ts) => `${ts}.bak`);
+      },
+
+      async read(rel, fileName) {
+        const key = this._key(rel);
+        if (NativeFS.available()) {
+          const { data } = await window.Capacitor.Plugins.Filesystem.readFile({ path: `backups/${key}/${fileName}`, directory: "DATA", encoding: "utf8" });
+          return data;
+        }
+        const ts = fileName.replace(/\.bak$/, "");
+        return localStorage.getItem(`backup:${key}:${ts}`);
+      },
+
+      async _prune(key) {
+        try {
+          const { files } = await window.Capacitor.Plugins.Filesystem.readdir({ path: `backups/${key}`, directory: "DATA" });
+          const sorted = files.map((f) => f.name).sort();
+          while (sorted.length > this.maxPerFile) {
+            const oldest = sorted.shift();
+            await window.Capacitor.Plugins.Filesystem.deleteFile({ path: `backups/${key}/${oldest}`, directory: "DATA" }).catch(() => {});
+          }
+        } catch (e) {
+          /* nothing to prune yet */
+        }
+      },
+    };
+
+    let backupHistoryTarget = null;
+
+    async function showBackupHistory(rel, event) {
+      event?.stopPropagation();
+      backupHistoryTarget = rel;
+      const list = await BackupManager.list(rel);
+      const container = document.getElementById("backupHistoryList");
+      container.innerHTML = "";
+
+      if (list.length === 0) {
+        const empty = document.createElement("div");
+        empty.textContent = "No backups yet for this file. A snapshot is saved every time you hit Save.";
+        empty.style.opacity = "0.7";
+        empty.style.padding = "10px 8px";
+        container.appendChild(empty);
+      } else {
+        list.forEach((fileName) => {
+          const item = document.createElement("div");
+          item.className = "file-manager-item";
+
+          const label = document.createElement("span");
+          label.className = "file-manager-name";
+          label.textContent = formatBackupLabel(fileName);
+          item.appendChild(label);
+
+          const restore = document.createElement("span");
+          restore.className = "file-manager-remove";
+          restore.textContent = "↩️ Restore";
+          restore.onclick = (e) => restoreBackup(rel, fileName, e);
+          item.appendChild(restore);
+
+          container.appendChild(item);
+        });
+      }
+
+      document.getElementById("backupModalTitle").textContent = `Backups — ${rel.includes("/") ? rel.slice(rel.lastIndexOf("/") + 1) : rel}`;
+      document.getElementById("backupModal").style.display = "block";
+    }
+
+    function formatBackupLabel(fileName) {
+      // "2026-08-07T19-02-13-123Z.bak" -> "2026-08-07 19:02:13"
+      const raw = fileName.replace(/\.bak$/, "");
+      const m = raw.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})/);
+      return m ? `${m[1]} ${m[2]}:${m[3]}:${m[4]}` : raw;
+    }
+
+    async function restoreBackup(rel, fileName, event) {
+      event?.stopPropagation();
+      if (!confirm("Restore this backup? This replaces the current content of the file (a snapshot of the current version is taken first, so you can undo this too).")) return;
+      try {
+        const backupContent = await BackupManager.read(rel, fileName);
+        if (backupContent === null || backupContent === undefined) {
+          showError("Couldn't read that backup");
+          return;
+        }
+
+        // Snapshot what's there right now before overwriting, so restoring
+        // is itself undoable.
+        const model = projectFiles.get(rel);
+        if (model) {
+          await BackupManager.save(rel, model.getValue());
+          model.setValue(backupContent);
+        }
+
+        if (NativeFS.available() && NativeFS.hasNativeHandle(rel)) {
+          await NativeFS.writeFile(rel, backupContent);
+        }
+
+        persistFiles();
+        closeModal("backupModal");
+        showNotification(`Restored "${rel}" from backup`);
+      } catch (e) {
+        console.error(e);
+        showError(`Couldn't restore backup: ${e?.message || e}`);
+      }
+    }
+
     const TypeDefCache = {
       async get(key) {
         if (NativeFS.available()) return NativeFS.getCachedTypeDef(key);
@@ -1010,59 +1225,150 @@
     }
 
     /*------files manager (mini file browser) related functions------ */
+    // Which folder paths are currently expanded in the tree view.
+    let expandedDirs = new Set();
+
     function showFileManager() {
       editor?.setSelection({ startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 });
       document.activeElement?.blur();
+
+      // First time it's opened, start with the top-level folders expanded
+      // (like a fresh VS Code window) instead of everything collapsed.
+      if (expandedDirs.size === 0) {
+        const tree = buildFileTree(Array.from(projectFiles.keys()));
+        tree.children.forEach((child) => {
+          if (child.type === "dir") expandedDirs.add(child.rel);
+        });
+      }
+
       renderFileManager();
       document.getElementById("filesModal").style.display = "block";
+    }
+
+    // Turns a flat list of relative paths ("scripts/adm/dims/copy-area.js")
+    // into a nested tree of { type: "dir"|"file", name, rel, children }.
+    function buildFileTree(names) {
+      const root = { type: "dir", name: "", rel: "", children: new Map() };
+      names.forEach((rel) => {
+        const parts = rel.split("/");
+        let node = root;
+        let pathSoFar = "";
+        parts.forEach((part, i) => {
+          pathSoFar = pathSoFar ? `${pathSoFar}/${part}` : part;
+          const isFile = i === parts.length - 1;
+          if (isFile) {
+            node.children.set(part, { type: "file", name: part, rel: pathSoFar });
+          } else {
+            if (!node.children.has(part)) {
+              node.children.set(part, { type: "dir", name: part, rel: pathSoFar, children: new Map() });
+            }
+            node = node.children.get(part);
+          }
+        });
+      });
+      return root;
     }
 
     function renderFileManager() {
       const list = document.getElementById("fileManagerList");
       if (!list) return;
       list.innerHTML = "";
-      const sortedNames = Array.from(projectFiles.keys()).sort((a, b) => a.localeCompare(b));
 
-      sortedNames.forEach((name) => {
+      const names = Array.from(projectFiles.keys());
+      if (names.length === 0) {
+        const empty = document.createElement("div");
+        empty.textContent = "No files yet. Use Open, Open Folder or New.";
+        empty.style.opacity = "0.7";
+        list.appendChild(empty);
+        return;
+      }
+
+      const tree = buildFileTree(names);
+      renderTreeNode(tree, list, 0);
+    }
+
+    function renderTreeNode(node, container, depth) {
+      const dirs = [];
+      const files = [];
+      node.children.forEach((child) => (child.type === "dir" ? dirs : files).push(child));
+      dirs.sort((a, b) => a.name.localeCompare(b.name));
+      files.sort((a, b) => a.name.localeCompare(b.name));
+
+      dirs.forEach((dir) => {
+        const expanded = expandedDirs.has(dir.rel);
+
+        const row = document.createElement("div");
+        row.className = "file-manager-item file-manager-dir";
+        row.style.paddingLeft = `${8 + depth * 18}px`;
+        row.title = dir.rel;
+        row.onclick = () => {
+          if (expanded) expandedDirs.delete(dir.rel);
+          else expandedDirs.add(dir.rel);
+          renderFileManager();
+        };
+
+        const arrow = document.createElement("span");
+        arrow.className = "file-manager-arrow";
+        arrow.textContent = expanded ? "▾" : "▸";
+        row.appendChild(arrow);
+
+        const icon = document.createElement("span");
+        icon.textContent = expanded ? "📂" : "📁";
+        row.appendChild(icon);
+
+        const label = document.createElement("span");
+        label.className = "file-manager-name";
+        label.textContent = dir.name;
+        row.appendChild(label);
+
+        container.appendChild(row);
+
+        if (expanded) renderTreeNode(dir, container, depth + 1);
+      });
+
+      files.forEach((file) => {
+        const rel = file.rel;
         const item = document.createElement("div");
-        item.className = "file-manager-item" + (name === activeFileName ? " active" : "");
-        item.title = name;
+        item.className = "file-manager-item" + (rel === activeFileName ? " active" : "");
+        item.style.paddingLeft = `${8 + depth * 18 + 16}px`;
+        item.title = rel;
         item.onclick = () => {
-          openFileInTab(name);
+          openFileInTab(rel);
           closeModal("filesModal");
         };
 
         const icon = document.createElement("span");
-        icon.textContent = openTabs.includes(name) ? "📝" : "📄";
+        icon.textContent = openTabs.includes(rel) ? "📝" : "📄";
         item.appendChild(icon);
 
         const label = document.createElement("span");
         label.className = "file-manager-name";
-        label.textContent = name;
+        label.textContent = file.name;
         item.appendChild(label);
+
+        const history = document.createElement("span");
+        history.className = "file-manager-remove";
+        history.title = "Backup history";
+        history.textContent = "🕐";
+        history.onclick = (e) => showBackupHistory(rel, e);
+        item.appendChild(history);
 
         const reload = document.createElement("span");
         reload.className = "file-manager-remove";
         reload.title = "Reload this file from disk";
         reload.textContent = "🔄";
-        reload.onclick = (e) => reloadFileFromDisk(name, e);
+        reload.onclick = (e) => reloadFileFromDisk(rel, e);
         item.appendChild(reload);
 
         const remove = document.createElement("span");
         remove.className = "file-manager-remove";
+        remove.title = "Remove from project";
         remove.textContent = "🗑️";
-        remove.onclick = (e) => removeFromProject(name, e);
+        remove.onclick = (e) => removeFromProject(rel, e);
         item.appendChild(remove);
 
-        list.appendChild(item);
+        container.appendChild(item);
       });
-
-      if (sortedNames.length === 0) {
-        const empty = document.createElement("div");
-        empty.textContent = "No files yet. Use Open, Open Folder or New.";
-        empty.style.opacity = "0.7";
-        list.appendChild(empty);
-      }
     }
 
     function triggerOpenFile() {
@@ -1165,6 +1471,7 @@
         if (mode === "reload") {
           showNotification(`Folder reloaded: ${updatedCount} updated, ${addedCount} new`);
         } else {
+          expandedDirs = new Set(); // fresh project - let showFileManager() re-expand the top level
           const entryName = projectFiles.has("main.js") ? "main.js" : projectFiles.has("index.js") ? "index.js" : Array.from(projectFiles.keys())[0];
           openFileInTab(entryName);
           showNotification(`Loaded ${files.length} file(s) from folder`);
@@ -1223,6 +1530,7 @@
             if (mode === "reload") {
               showNotification(`Folder reloaded: ${updatedCount} updated, ${addedCount} new`);
             } else {
+              expandedDirs = new Set();
               const entryName = projectFiles.has("main.js") ? "main.js" : projectFiles.has("index.js") ? "index.js" : Array.from(projectFiles.keys())[0];
               openFileInTab(entryName);
               showNotification(`Loaded ${loaded} file(s) from folder`);
@@ -1588,6 +1896,11 @@
       loadSetting();
       if (NativeFS.available()) {
         await NativeFS.restoreLastFolderUri();
+        // Fire-and-forget: re-links every already-loaded file to its real
+        // content:// uri so Save works right away, without blocking startup.
+        if (NativeFS.rootUri) {
+          NativeFS.refreshHandles(NativeFS.rootUri).catch((e) => console.error("Failed to refresh native file handles", e));
+        }
       }
       // Add theme initialization
       const savedTheme = localStorage.getItem("theme") || "vs-dark";
@@ -1943,6 +2256,14 @@
 
       if (NativeFS.available() && NativeFS.hasNativeHandle(activeName)) {
         try {
+          try {
+            const currentOnDisk = await NativeFS.readFile(activeName);
+            if (currentOnDisk !== null && currentOnDisk !== undefined && currentOnDisk !== code) {
+              await BackupManager.save(activeName, currentOnDisk);
+            }
+          } catch (e) {
+            console.error(`Couldn't read current content of "${activeName}" for backup, saving without one`, e);
+          }
           await NativeFS.writeFile(activeName, code);
           showNotification(`Saved "${activeName}" to disk`);
         } catch (e) {
